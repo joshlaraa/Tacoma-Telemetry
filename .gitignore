@@ -5,3 +5,6 @@ frontend/node_modules/
 frontend/dist/
 *.log
 compile_commands.json
+
+# Local Cursor configuration
+.cursor/
