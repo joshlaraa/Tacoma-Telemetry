@@ -1,4 +1,11 @@
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ReferenceLine,
+  XAxis,
+  YAxis,
+} from "recharts"
 
 import {
   ChartContainer,
@@ -14,6 +21,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import {
+  COOLANT_HOT_THRESHOLD_C,
   TELEMETRY_RANGE_MIN_FRAME,
   TELEMETRY_RANGE_FRAME,
   toDisplayUnits,
@@ -37,9 +45,15 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
+const HOT_THRESHOLD_FRAME: TelemetryFrame = {
+  ...TELEMETRY_RANGE_FRAME,
+  coolantTempC: COOLANT_HOT_THRESHOLD_C,
+}
+
 export function LiveChart({ history, units }: LiveChartProps) {
   const displayMinimum = toDisplayUnits(TELEMETRY_RANGE_MIN_FRAME, units)
   const displayRange = toDisplayUnits(TELEMETRY_RANGE_FRAME, units)
+  const displayHotThreshold = toDisplayUnits(HOT_THRESHOLD_FRAME, units)
   const latestTimestamp = history[history.length - 1]?.timestamp ?? 0
   const speedTicks = Array.from({ length: 4 }, (_, index) => {
     const fraction = index / 3
@@ -168,6 +182,18 @@ export function LiveChart({ history, units }: LiveChartProps) {
                 />
               }
             />
+            <ReferenceLine
+              yAxisId="coolant"
+              y={displayHotThreshold.coolantTemp}
+              stroke="var(--destructive)"
+              strokeDasharray="4 4"
+              label={{
+                value: `Hot ${displayHotThreshold.coolantTemp.toFixed(1)}${displayHotThreshold.coolantUnit}`,
+                position: "insideTopRight",
+                fill: "var(--destructive)",
+                fontSize: 11,
+              }}
+            />
             <Area
               yAxisId="speed"
               dataKey="speed"
@@ -194,17 +220,11 @@ export function LiveChart({ history, units }: LiveChartProps) {
         </ChartContainer>
         <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-2">
-            <span
-              className="size-2 rounded-full"
-              style={{ backgroundColor: "var(--color-speed)" }}
-            />
+            <span className="size-2 rounded-full bg-chart-1" />
             Speed ({units === "metric" ? "km/h" : "mph"})
           </span>
           <span className="inline-flex items-center gap-2">
-            <span
-              className="size-2 rounded-full"
-              style={{ backgroundColor: "var(--color-coolant)" }}
-            />
+            <span className="size-2 rounded-full bg-chart-2" />
             Coolant ({units === "metric" ? "°C" : "°F"})
           </span>
         </div>

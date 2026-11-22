@@ -52,7 +52,16 @@ export function useTelemetry() {
   const setMockMode = useCallback(
     (nextMode: MockTelemetryMode) => {
       if (source instanceof MockTelemetrySource) {
+        if (source.getMode() === nextMode) {
+          return
+        }
+
         source.setMode(nextMode)
+        // The mock clock restarts per scenario, so discard the prior epoch;
+        // every retained history timestamp then increases by 0.1 seconds.
+        frameCount.current = 0
+        setHistory([])
+        setMetricFrame(null)
         setMockModeState(nextMode)
       }
     },

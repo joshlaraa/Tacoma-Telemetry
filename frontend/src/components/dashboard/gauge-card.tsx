@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { COOLANT_HOT_THRESHOLD_C } from "@/types/telemetry"
 
 import { MetricReadout } from "./metric-readout"
 import { SoftText } from "./soft-text"
@@ -35,7 +36,7 @@ const chartConfig = {
 } satisfies ChartConfig
 
 export function getCoolantZone(coolantTempC: number): CoolantZone {
-  if (coolantTempC > 102) {
+  if (coolantTempC > COOLANT_HOT_THRESHOLD_C) {
     return "Hot"
   }
   if (coolantTempC >= 95) {

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import type { MockTelemetryMode } from "@/lib/telemetry-source"
 import {
+  COOLANT_HOT_THRESHOLD_C,
   TELEMETRY_RANGE_MIN_FRAME,
   TELEMETRY_RANGE_FRAME,
   TELEMETRY_RANGES,
@@ -31,7 +32,7 @@ type TelemetryDashboardProps = {
 
 const HOT_THRESHOLD_FRAME: TelemetryFrame = {
   ...TELEMETRY_RANGE_FRAME,
-  coolantTempC: 102,
+  coolantTempC: COOLANT_HOT_THRESHOLD_C,
 }
 
 export function TelemetryDashboard({
@@ -48,7 +49,8 @@ export function TelemetryDashboard({
   const displayGaugeDomain = toDisplayUnits(TELEMETRY_RANGE_FRAME, units)
   const displayHotThreshold = toDisplayUnits(HOT_THRESHOLD_FRAME, units)
   const coolantZone = getCoolantZone(metricFrame?.coolantTempC ?? 0)
-  const isHot = (metricFrame?.coolantTempC ?? 0) > 102
+  const isHot =
+    (metricFrame?.coolantTempC ?? 0) > COOLANT_HOT_THRESHOLD_C
 
   return (
     <main className="min-h-svh bg-background">
@@ -83,7 +85,7 @@ export function TelemetryDashboard({
                 <AlertDescription>
                   Coolant is at {displayFrame?.coolantTemp.toFixed(1)}
                   {displayFrame?.coolantUnit}; the hot threshold is{" "}
-                  {displayHotThreshold.coolantTemp.toFixed(0)}
+                  {displayHotThreshold.coolantTemp.toFixed(1)}
                   {displayHotThreshold.coolantUnit}. Reduce engine load and
                   check the cooling system.
                 </AlertDescription>

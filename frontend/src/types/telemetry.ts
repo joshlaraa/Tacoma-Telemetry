@@ -13,6 +13,8 @@ export const TELEMETRY_RANGES = {
   coolantTempC: { min: 0, max: 120 },
 } as const
 
+export const COOLANT_HOT_THRESHOLD_C = 102
+
 export const TELEMETRY_RANGE_MIN_FRAME: TelemetryFrame = {
   timestamp: 0,
   speedKmh: TELEMETRY_RANGES.speedKmh.min,
