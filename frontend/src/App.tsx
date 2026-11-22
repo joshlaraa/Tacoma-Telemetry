@@ -1,20 +1,19 @@
-import { Button } from "@/components/ui/button"
+import { useTelemetry } from "@/hooks/useTelemetry"
+
+import { TelemetryDashboard } from "@/components/dashboard/telemetry-dashboard"
 
 export function App() {
+  const telemetry = useTelemetry()
+
   return (
-    <div className="flex min-h-svh p-6">
-      <div className="flex max-w-md min-w-0 flex-col gap-4 text-sm leading-loose">
-        <div>
-          <h1 className="font-medium">Project ready!</h1>
-          <p>You may now add components and start building.</p>
-          <p>We&apos;ve already added the button component for you.</p>
-          <Button className="mt-2">Button</Button>
-        </div>
-        <div className="font-mono text-xs text-muted-foreground">
-          (Press <kbd>d</kbd> to toggle dark mode)
-        </div>
-      </div>
-    </div>
+    <TelemetryDashboard
+      history={telemetry.history}
+      metricFrame={telemetry.metricFrame}
+      status={telemetry.status}
+      isMockSource={telemetry.isMockSource}
+      mockMode={telemetry.mockMode}
+      onMockModeChange={telemetry.setMockMode}
+    />
   )
 }
 
