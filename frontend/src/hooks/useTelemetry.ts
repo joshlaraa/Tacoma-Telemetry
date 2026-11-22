@@ -1,21 +1,32 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import {
+  createTelemetrySource,
   MockTelemetrySource,
   type MockTelemetryMode,
 } from "@/lib/telemetry-source"
+import { appendTelemetryFrame } from "@/lib/telemetry-history"
 import type {
   TelemetryFrame,
   TelemetrySource,
   TelemetrySourceStatus,
 } from "@/types/telemetry"
 
-const MAX_HISTORY_LENGTH = 600
-const DISPLAY_FRAME_INTERVAL = 5
+// The mock emits at 10 Hz; every fifth frame keeps readouts at 2 Hz.
+const DISPLAY_FRAME_INTERVAL_FRAMES = 5
 
+/**
+ * Bridges one telemetry source to React state.
+ *
+ * History updates at the source cadence while the current metric frame is
+ * exposed every fifth accepted frame for the dashboard's lower-frequency
+ * readouts.
+ */
 export function useTelemetry() {
-  // Switch this one line to WebSocketTelemetrySource when the backend transport exists.
-  const source = useMemo<TelemetrySource>(() => new MockTelemetrySource(), [])
+  const source = useMemo<TelemetrySource>(
+    () => createTelemetrySource({ kind: "mock" }),
+    []
+  )
   const [history, setHistory] = useState<TelemetryFrame[]>([])
   const [metricFrame, setMetricFrame] = useState<TelemetryFrame | null>(null)
   const [status, setStatus] = useState<TelemetrySourceStatus>(
@@ -23,21 +34,30 @@ export function useTelemetry() {
   )
   const [mockMode, setMockModeState] = useState<MockTelemetryMode>("normal")
   const frameCount = useRef(0)
+  const latestTimestampSeconds = useRef<number | null>(null)
 
   useEffect(() => {
     frameCount.current = 0
+    latestTimestampSeconds.current = null
     const unsubscribeStatus = source.subscribeStatus?.(setStatus)
 
-    source.subscribe((frame) => {
+    const unsubscribe = source.subscribe((frame) => {
+      if (
+        latestTimestampSeconds.current !== null &&
+        frame.timestamp <= latestTimestampSeconds.current
+      ) {
+        return
+      }
+
+      latestTimestampSeconds.current = frame.timestamp
       frameCount.current += 1
-      setHistory((currentHistory) => [
-        ...currentHistory.slice(-(MAX_HISTORY_LENGTH - 1)),
-        frame,
-      ])
+      setHistory((currentHistory) =>
+        appendTelemetryFrame(currentHistory, frame)
+      )
 
       if (
         frameCount.current === 1 ||
-        frameCount.current % DISPLAY_FRAME_INTERVAL === 0
+        frameCount.current % DISPLAY_FRAME_INTERVAL_FRAMES === 0
       ) {
         setMetricFrame(frame)
       }
@@ -45,6 +65,7 @@ export function useTelemetry() {
 
     return () => {
       unsubscribeStatus?.()
+      unsubscribe()
       source.stop()
     }
   }, [source])
@@ -57,8 +78,6 @@ export function useTelemetry() {
         }
 
         source.setMode(nextMode)
-        // The mock clock restarts per scenario, so discard the prior epoch;
-        // every retained history timestamp then increases by 0.1 seconds.
         frameCount.current = 0
         setHistory([])
         setMetricFrame(null)

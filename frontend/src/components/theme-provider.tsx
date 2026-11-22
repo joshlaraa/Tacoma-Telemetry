@@ -23,11 +23,7 @@ const ThemeProviderContext = React.createContext<
 >(undefined)
 
 function isTheme(value: string | null): value is Theme {
-  if (value === null) {
-    return false
-  }
-
-  return THEME_VALUES.includes(value as Theme)
+  return value !== null && THEME_VALUES.some((theme) => theme === value)
 }
 
 function getSystemTheme(): ResolvedTheme {
@@ -76,6 +72,7 @@ function isEditableTarget(target: EventTarget | null) {
   return false
 }
 
+/** Applies persisted light, dark, or system theme state to the document. */
 export function ThemeProvider({
   children,
   defaultTheme = "system",
@@ -218,6 +215,7 @@ export function ThemeProvider({
   )
 }
 
+/** Reads theme state and updates it through a containing ThemeProvider. */
 export const useTheme = () => {
   const context = React.useContext(ThemeProviderContext)
 

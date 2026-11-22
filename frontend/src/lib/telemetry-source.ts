@@ -5,6 +5,7 @@ import type {
   TelemetrySourceStatus,
 } from "@/types/telemetry"
 
+/** Scenario presets supported by the deterministic mock source. */
 export type MockTelemetryMode = "normal" | "mountain"
 
 const FRAME_PERIOD_MS = 100
@@ -23,6 +24,16 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value)
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
+
+/**
+ * Emits deterministic Tacoma telemetry in simulated time.
+ *
+ * The simulated timestamp is continuous across scenario changes so consumers
+ * can rely on the source stream's monotonic-time contract.
+ */
 export class MockTelemetrySource implements TelemetrySource {
   readonly kind = "mock" as const
 
@@ -46,6 +57,12 @@ export class MockTelemetrySource implements TelemetrySource {
     if (this.timer === null) {
       this.timer = window.setInterval(() => this.emitFrame(), FRAME_PERIOD_MS)
     }
+
+    return () => {
+      if (this.listener === listener) {
+        this.stop()
+      }
+    }
   }
 
   stop() {
@@ -62,7 +79,6 @@ export class MockTelemetrySource implements TelemetrySource {
     }
 
     this.mode = mode
-    this.simulatedTimeSeconds = 0
     this.speedKmh = 0
     this.gear = 1
     this.coolantTempC = mode === "mountain" ? 88 : 20
@@ -164,26 +180,32 @@ export class MockTelemetrySource implements TelemetrySource {
   }
 }
 
-type WebSocketTelemetryOptions = {
+/** Options for the deferred WebSocket telemetry source. */
+export type WebSocketTelemetryOptions = {
   reconnectDelayMs?: number
 }
 
 function isTelemetryFrame(value: unknown): value is TelemetryFrame {
-  if (typeof value !== "object" || value === null) {
+  if (!isRecord(value)) {
     return false
   }
 
-  const frame = value as Record<string, unknown>
   return (
-    isFiniteNumber(frame.timestamp) &&
-    isFiniteNumber(frame.speedKmh) &&
-    isFiniteNumber(frame.rpm) &&
-    isFiniteNumber(frame.coolantTempC) &&
-    isFiniteNumber(frame.throttlePct) &&
-    isFiniteNumber(frame.engineLoadPct)
+    isFiniteNumber(value.timestamp) &&
+    isFiniteNumber(value.speedKmh) &&
+    isFiniteNumber(value.rpm) &&
+    isFiniteNumber(value.coolantTempC) &&
+    isFiniteNumber(value.throttlePct) &&
+    isFiniteNumber(value.engineLoadPct)
   )
 }
 
+/**
+ * Receives telemetry frames from a WebSocket transport.
+ *
+ * TODO: Defer stale-socket protection (R1), backoff (R2), and range/order
+ * validation (R3) until the C++ server defines the transport protocol.
+ */
 export class WebSocketTelemetrySource implements TelemetrySource {
   readonly kind = "websocket" as const
 
@@ -206,6 +228,10 @@ export class WebSocketTelemetrySource implements TelemetrySource {
     this.listeners.add(listener)
     this.stopped = false
     this.connect()
+
+    return () => {
+      this.listeners.delete(listener)
+    }
   }
 
   subscribeStatus(listener: (status: TelemetrySourceStatus) => void) {
@@ -262,4 +288,29 @@ export class WebSocketTelemetrySource implements TelemetrySource {
   private publishStatus(status: TelemetrySourceStatus) {
     this.statusListeners.forEach((listener) => listener(status))
   }
+}
+
+/** Configuration used to choose one telemetry source implementation. */
+export type TelemetrySourceConfig =
+  | { kind: "mock"; mode?: MockTelemetryMode }
+  | {
+      kind: "websocket"
+      url: string
+      options?: WebSocketTelemetryOptions
+    }
+
+/**
+ * Creates the configured telemetry source behind one application boundary.
+ *
+ * The default keeps the dashboard deterministic until the backend transport
+ * protocol is ready.
+ */
+export function createTelemetrySource(
+  config: TelemetrySourceConfig = { kind: "mock" }
+): TelemetrySource {
+  if (config.kind === "mock") {
+    return new MockTelemetrySource(config.mode)
+  }
+
+  return new WebSocketTelemetrySource(config.url, config.options)
 }

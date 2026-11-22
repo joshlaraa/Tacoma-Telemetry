@@ -18,6 +18,7 @@ const alertVariants = cva(
   }
 )
 
+/** Announces a persistent status or error message to assistive technology. */
 function Alert({
   className,
   variant,
@@ -33,6 +34,7 @@ function Alert({
   )
 }
 
+/** Provides the short title for an alert. */
 function AlertTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -46,6 +48,7 @@ function AlertTitle({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
+/** Provides supporting detail for an alert. */
 function AlertDescription({
   className,
   ...props
@@ -62,6 +65,7 @@ function AlertDescription({
   )
 }
 
+/** Provides an optional action slot for an alert. */
 function AlertAction({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div

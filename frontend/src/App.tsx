@@ -2,6 +2,7 @@ import { useTelemetry } from "@/hooks/useTelemetry"
 
 import { TelemetryDashboard } from "@/components/dashboard/telemetry-dashboard"
 
+/** Connects the telemetry hook to the dashboard presentation. */
 export function App() {
   const telemetry = useTelemetry()
 
@@ -17,4 +18,5 @@ export function App() {
   )
 }
 
+/** Default application entry component for the Vite bootstrap. */
 export default App

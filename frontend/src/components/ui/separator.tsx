@@ -2,6 +2,7 @@ import * as React from "react"
 import { cn } from "cn"
 import { Separator as SeparatorPrimitive } from "radix-ui"
 
+/** Renders a decorative or semantic divider using theme border tokens. */
 function Separator({
   className,
   orientation = "horizontal",

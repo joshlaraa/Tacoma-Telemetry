@@ -1,21 +1,20 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useState } from "react"
+import type { ReactNode } from "react"
 import {
-  ArrowsClockwiseIcon,
+  ArrowsLeftRightIcon,
+  MountainsIcon,
   MoonIcon,
+  PlugsConnectedIcon,
+  RulerIcon,
+  SlidersHorizontalIcon,
   SunIcon,
-  WifiHighIcon,
 } from "@phosphor-icons/react"
 
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { useTheme } from "@/components/theme-provider"
 import type { MockTelemetryMode } from "@/lib/telemetry-source"
 import type {
@@ -44,13 +43,238 @@ function statusLabel(status: TelemetrySourceStatus) {
   return "Reconnecting"
 }
 
-function statusVariant(status: TelemetrySourceStatus) {
-  if (status === "reconnecting") {
-    return "destructive" as const
-  }
-  return "secondary" as const
+function StatusIndicator({
+  status,
+  className,
+}: {
+  status: TelemetrySourceStatus
+  className?: string
+}) {
+  const dotClass =
+    status === "reconnecting"
+      ? "bg-destructive"
+      : status === "connected"
+        ? "bg-chart-2"
+        : "bg-chart-1"
+
+  return (
+    <span className={`whitespace-nowrap ${className ?? ""}`}>
+      <span
+        className={`size-1.5 shrink-0 rounded-full ${dotClass}`}
+        aria-hidden="true"
+      />
+      <SoftText value={statusLabel(status)} />
+    </span>
+  )
 }
 
+function useResolvedDark(theme: "dark" | "light" | "system") {
+  const [isDark, setIsDark] = useState(() =>
+    document.documentElement.classList.contains("dark")
+  )
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)")
+    const update = () => {
+      setIsDark(theme === "dark" || (theme === "system" && media.matches))
+    }
+
+    update()
+    media.addEventListener("change", update)
+    return () => media.removeEventListener("change", update)
+  }, [theme])
+
+  return isDark
+}
+
+function ThemeIcon({ isDark }: { isDark: boolean }) {
+  return (
+    <span
+      className="t-icon-swap"
+      data-state={isDark ? "b" : "a"}
+      aria-hidden="true"
+    >
+      <span className="t-icon" data-icon="a">
+        <SunIcon />
+      </span>
+      <span className="t-icon" data-icon="b">
+        <MoonIcon />
+      </span>
+    </span>
+  )
+}
+
+function SettingIcon({
+  children,
+  small = false,
+}: {
+  children: ReactNode
+  small?: boolean
+}) {
+  return (
+    <span
+      className={`${small ? "size-8" : "size-9"} flex shrink-0 items-center justify-center rounded-full bg-background text-foreground [&_svg]:size-4`}
+      aria-hidden="true"
+    >
+      {children}
+    </span>
+  )
+}
+
+const tileClass =
+  "t-control flex w-full items-center gap-3 rounded-xl bg-muted p-2.5 text-left"
+
+function SettingTile({
+  icon,
+  title,
+  value,
+  actionLabel,
+  onClick,
+  trailing,
+}: {
+  icon: ReactNode
+  title: string
+  value: ReactNode
+  actionLabel?: string
+  onClick?: () => void
+  trailing?: ReactNode
+}) {
+  const content = (
+    <>
+      <SettingIcon>{icon}</SettingIcon>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm leading-tight font-medium">{title}</span>
+        <span className="mt-0.5 block text-xs text-muted-foreground">
+          {value}
+        </span>
+      </span>
+      {trailing}
+    </>
+  )
+
+  if (!onClick) {
+    return <div className={tileClass}>{content}</div>
+  }
+
+  return (
+    <button
+      type="button"
+      className={`${tileClass} cursor-pointer border border-border bg-card outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 active:bg-accent`}
+      aria-label={actionLabel}
+      onClick={onClick}
+    >
+      {content}
+    </button>
+  )
+}
+
+function SettingsMenu({
+  units,
+  onUnitsChange,
+  status,
+  isMockSource,
+  mockMode,
+  onMockModeChange,
+  isDark,
+  onThemeToggle,
+}: HeaderControlsProps & {
+  isDark: boolean
+  onThemeToggle: () => void
+}) {
+  const swap = (
+    <ArrowsLeftRightIcon
+      className="mr-1 size-4 shrink-0 text-muted-foreground"
+      aria-hidden="true"
+    />
+  )
+  const nextUnits = units === "metric" ? "imperial" : "metric"
+  const nextMode = mockMode === "normal" ? "mountain" : "normal"
+
+  return (
+    <div>
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="t-control flex min-w-0 cursor-pointer items-center gap-2 whitespace-nowrap bg-muted py-1 pr-3 pl-1 text-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            aria-label="Open dashboard settings"
+          >
+            <span
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-background [&_svg]:size-4"
+              aria-hidden="true"
+            >
+              <SlidersHorizontalIcon />
+            </span>
+            <StatusIndicator
+              status={status}
+              className="flex items-center gap-2"
+            />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[min(20rem,calc(100vw-1.5rem))] space-y-2 p-3">
+          <div className="flex items-center gap-3 px-0.5 pb-1">
+            <SettingIcon>
+              <SlidersHorizontalIcon />
+            </SettingIcon>
+            <span className="text-sm font-semibold">Settings</span>
+          </div>
+          <SettingTile
+            icon={<PlugsConnectedIcon />}
+            title="Connection"
+            value={
+              <StatusIndicator
+                status={status}
+                className="flex items-center gap-1.5"
+              />
+            }
+          />
+          {isMockSource ? (
+            <SettingTile
+              icon={<MountainsIcon />}
+              title="Scenario"
+              value={
+                <SoftText
+                  value={
+                    mockMode === "normal" ? "Normal drive" : "Mountain climb"
+                  }
+                />
+              }
+              actionLabel={`Switch scenario to ${nextMode === "normal" ? "normal drive" : "mountain climb"}`}
+              onClick={() => onMockModeChange(nextMode)}
+              trailing={swap}
+            />
+          ) : null}
+          <SettingTile
+            icon={<RulerIcon />}
+            title="Units"
+            value={
+              <SoftText
+                value={
+                  units === "metric"
+                    ? "Metric (km/h, °C)"
+                    : "Imperial (mph, °F)"
+                }
+              />
+            }
+            actionLabel={`Switch units to ${nextUnits}`}
+            onClick={() => onUnitsChange(nextUnits)}
+            trailing={swap}
+          />
+          <SettingTile
+            icon={<ThemeIcon isDark={isDark} />}
+            title="Appearance"
+            value={<SoftText value={isDark ? "Dark theme" : "Light theme"} />}
+            actionLabel={isDark ? "Use light theme" : "Use dark theme"}
+            onClick={onThemeToggle}
+            trailing={swap}
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  )
+}
+
+/** Provides unit, scenario, connection-status, and theme controls. */
 export function HeaderControls({
   units,
   onUnitsChange,
@@ -60,133 +284,24 @@ export function HeaderControls({
   onMockModeChange,
 }: HeaderControlsProps) {
   const { theme, setTheme } = useTheme()
-  const tabsRef = useRef<HTMLDivElement>(null)
-  const pillRef = useRef<HTMLSpanElement>(null)
-  const initializedTabs = useRef(false)
-  const isDark = document.documentElement.classList.contains("dark")
-
-  useEffect(() => {
-    const bar = tabsRef.current
-    const pill = pillRef.current
-    if (!bar || !pill) {
-      return
-    }
-
-    const movePill = (animate: boolean) => {
-      const active = bar.querySelector<HTMLElement>(`[data-value="${units}"]`)
-      if (!active) {
-        return
-      }
-
-      if (!animate) {
-        const previousTransition = pill.style.transition
-        pill.style.transition = "none"
-        pill.style.transform = `translateX(${active.offsetLeft}px)`
-        pill.style.width = `${active.offsetWidth}px`
-        void pill.offsetWidth
-        pill.style.transition = previousTransition
-        return
-      }
-
-      pill.style.transform = `translateX(${active.offsetLeft}px)`
-      pill.style.width = `${active.offsetWidth}px`
-    }
-
-    const frame = window.requestAnimationFrame(() => {
-      movePill(initializedTabs.current)
-      initializedTabs.current = true
-    })
-    const handleResize = () => movePill(false)
-    window.addEventListener("resize", handleResize)
-
-    return () => {
-      window.cancelAnimationFrame(frame)
-      window.removeEventListener("resize", handleResize)
-    }
-  }, [units])
-
-  const resolvedDark = theme === "dark" || (theme === "system" && isDark)
+  const resolvedDark = useResolvedDark(theme)
+  const toggleTheme = () => setTheme(resolvedDark ? "light" : "dark")
 
   return (
-    <div className="flex w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end">
-      <Badge variant={statusVariant(status)} className="gap-1.5">
-        {status === "reconnecting" ? (
-          <ArrowsClockwiseIcon className="size-3.5" />
-        ) : (
-          <WifiHighIcon className="size-3.5" />
-        )}
-        <SoftText value={statusLabel(status)} />
-      </Badge>
-
-      {isMockSource ? (
-        <Select
-          value={mockMode}
-          onValueChange={(value) =>
-            onMockModeChange(value as MockTelemetryMode)
-          }
-        >
-          <SelectTrigger aria-label="Simulation mode" size="sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="normal">Normal drive</SelectItem>
-            <SelectItem value="mountain">Mountain climb</SelectItem>
-          </SelectContent>
-        </Select>
-      ) : null}
-
-      <div ref={tabsRef} className="t-tabs" role="tablist" aria-label="Units">
-        <span ref={pillRef} className="t-tabs-pill" aria-hidden="true" />
-        <ToggleGroup
-          type="single"
-          value={units}
-          onValueChange={(value) => {
-            if (value === "metric" || value === "imperial") {
-              onUnitsChange(value)
-            }
-          }}
-          variant="default"
-          size="sm"
-          spacing={0}
-          className="relative z-10"
-          aria-label="Units"
-        >
-          <ToggleGroupItem
-            value="metric"
-            className="t-tab"
-            aria-selected={units === "metric"}
-          >
-            Metric
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="imperial"
-            className="t-tab"
-            aria-selected={units === "imperial"}
-          >
-            Imperial
-          </ToggleGroupItem>
-        </ToggleGroup>
-      </div>
-
-      <Button
-        variant="outline"
-        size="icon"
-        aria-label={resolvedDark ? "Use light theme" : "Use dark theme"}
-        onClick={() => setTheme(resolvedDark ? "light" : "dark")}
-      >
-        <span
-          className="t-icon-swap"
-          data-state={resolvedDark ? "b" : "a"}
-          aria-hidden="true"
-        >
-          <span className="t-icon" data-icon="a">
-            <SunIcon />
-          </span>
-          <span className="t-icon" data-icon="b">
-            <MoonIcon />
-          </span>
-        </span>
-      </Button>
-    </div>
+    <>
+      <SettingsMenu
+        units={units}
+        onUnitsChange={onUnitsChange}
+        status={status}
+        isMockSource={isMockSource}
+        mockMode={mockMode}
+        onMockModeChange={onMockModeChange}
+        isDark={resolvedDark}
+        onThemeToggle={toggleTheme}
+      />
+      <span className="sr-only" aria-live="polite">
+        {statusLabel(status)}
+      </span>
+    </>
   )
 }

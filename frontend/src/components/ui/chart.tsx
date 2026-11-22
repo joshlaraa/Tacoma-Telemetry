@@ -3,12 +3,21 @@ import { cn } from "cn"
 import * as RechartsPrimitive from "recharts"
 import type { TooltipValueType } from "recharts"
 
-// Format: { THEME_NAME: CSS_SELECTOR }
-const THEMES = { light: "", dark: ".dark" } as const
+const THEMES = [
+  { name: "light", selector: "" },
+  { name: "dark", selector: ".dark" },
+] as const
+type ChartTheme = (typeof THEMES)[number]["name"]
 
 const INITIAL_DIMENSION = { width: 320, height: 200 } as const
 type TooltipNameType = number | string
 
+type ChartIndicatorStyle = React.CSSProperties & {
+  "--color-bg"?: string
+  "--color-border"?: string
+}
+
+/** Theme-aware labels, icons, and colors for a Recharts visualization. */
 export type ChartConfig = Record<
   string,
   {
@@ -16,7 +25,7 @@ export type ChartConfig = Record<
     icon?: React.ComponentType
   } & (
     | { color?: string; theme?: never }
-    | { color?: never; theme: Record<keyof typeof THEMES, string> }
+    | { color?: never; theme: Record<ChartTheme, string> }
   )
 >
 
@@ -36,6 +45,7 @@ function useChart() {
   return context
 }
 
+/** Provides responsive sizing and theme CSS variables to a chart. */
 function ChartContainer({
   id,
   className,
@@ -78,6 +88,7 @@ function ChartContainer({
   )
 }
 
+/** Generates scoped chart color variables for light and dark themes. */
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(
     ([, config]) => config.theme ?? config.color
@@ -90,14 +101,14 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   return (
     <style
       dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
+        __html: THEMES
           .map(
-            ([theme, prefix]) => `
+            ({ name: theme, selector: prefix }) => `
 ${prefix} [data-chart=${id}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
     const color =
-      itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ??
+      itemConfig.theme?.[theme] ??
       itemConfig.color
     return color ? `  --color-${key}: ${color};` : null
   })
@@ -111,8 +122,10 @@ ${colorConfig
   )
 }
 
+/** Recharts tooltip primitive exposed through the shared chart API. */
 const ChartTooltip = RechartsPrimitive.Tooltip
 
+/** Renders the shared theme-aware chart tooltip content. */
 function ChartTooltipContent({
   active,
   payload,
@@ -200,6 +213,10 @@ function ChartTooltipContent({
             const key = `${nameKey ?? item.name ?? item.dataKey ?? "value"}`
             const itemConfig = getPayloadConfigFromPayload(config, item, key)
             const indicatorColor = color ?? item.payload?.fill ?? item.color
+            const indicatorStyle: ChartIndicatorStyle = {
+              "--color-bg": indicatorColor,
+              "--color-border": indicatorColor,
+            }
 
             return (
               <div
@@ -228,12 +245,7 @@ function ChartTooltipContent({
                               "my-0.5": nestLabel && indicator === "dashed",
                             }
                           )}
-                          style={
-                            {
-                              "--color-bg": indicatorColor,
-                              "--color-border": indicatorColor,
-                            } as React.CSSProperties
-                          }
+                          style={indicatorStyle}
                         />
                       )
                     )}
@@ -267,8 +279,10 @@ function ChartTooltipContent({
   )
 }
 
+/** Recharts legend primitive exposed through the shared chart API. */
 const ChartLegend = RechartsPrimitive.Legend
 
+/** Renders the shared theme-aware chart legend content. */
 function ChartLegendContent({
   className,
   hideIcon = false,
@@ -329,35 +343,25 @@ function getPayloadConfigFromPayload(
   payload: unknown,
   key: string
 ) {
-  if (typeof payload !== "object" || payload === null) {
+  if (!isRecord(payload)) {
     return undefined
   }
 
-  const payloadPayload =
-    "payload" in payload &&
-    typeof payload.payload === "object" &&
-    payload.payload !== null
-      ? payload.payload
-      : undefined
+  const payloadPayload = isRecord(payload.payload) ? payload.payload : undefined
 
   let configLabelKey: string = key
 
-  if (
-    key in payload &&
-    typeof payload[key as keyof typeof payload] === "string"
-  ) {
-    configLabelKey = payload[key as keyof typeof payload] as string
-  } else if (
-    payloadPayload &&
-    key in payloadPayload &&
-    typeof payloadPayload[key as keyof typeof payloadPayload] === "string"
-  ) {
-    configLabelKey = payloadPayload[
-      key as keyof typeof payloadPayload
-    ] as string
+  if (typeof payload[key] === "string") {
+    configLabelKey = payload[key]
+  } else if (payloadPayload && typeof payloadPayload[key] === "string") {
+    configLabelKey = payloadPayload[key]
   }
 
   return configLabelKey in config ? config[configLabelKey] : config[key]
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
 }
 
 export {
