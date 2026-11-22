@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+// The frame is intentionally a lightweight value type, so these tests focus
+// on aggregate initialization and the documented default values.
 TEST(TelemetryFrameTest, StoresObdNativeValues) {
     const auto timestamp = std::chrono::steady_clock::now();
     const tacoma::core::TelemetryFrame frame{
@@ -21,6 +23,8 @@ TEST(TelemetryFrameTest, StoresObdNativeValues) {
     EXPECT_DOUBLE_EQ(frame.engine_load_pct, 31.0);
 }
 
+// Defaults make a newly allocated frame safe to display before a source has
+// produced its first measurement.
 TEST(TelemetryFrameTest, HasSensibleDefaults) {
     const tacoma::core::TelemetryFrame frame;
 

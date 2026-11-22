@@ -9,12 +9,16 @@
 
 namespace {
 
+// The callback runs on the simulator worker, so the test harness must protect
+// both the captured frames and the condition-variable predicate.
 struct FrameCapture {
     std::mutex mutex;  // Protects frames while the simulator callback thread writes them.
     std::condition_variable condition;
     std::vector<tacoma::core::TelemetryFrame> frames;
 };
 
+// Waiting on a predicate avoids flaky fixed sleeps and handles spurious
+// wake-ups correctly.
 void wait_for_frames(FrameCapture& capture, std::size_t count) {
     std::unique_lock lock(capture.mutex);
     ASSERT_TRUE(capture.condition.wait_for(
@@ -24,6 +28,7 @@ void wait_for_frames(FrameCapture& capture, std::size_t count) {
 
 }  // namespace
 
+// Verify the real-time producer publishes near its documented 10 Hz cadence.
 TEST(TacomaSimulatorTest, ProducesFramesAtTenHertz) {
     FrameCapture capture;
     tacoma::sim::TacomaSimulator simulator;
@@ -54,6 +59,8 @@ TEST(TacomaSimulatorTest, ProducesFramesAtTenHertz) {
     }
 }
 
+// Verify all externally visible values remain inside the simulator's safety
+// bounds while the worker is running.
 TEST(TacomaSimulatorTest, KeepsValuesInRealisticRanges) {
     FrameCapture capture;
     tacoma::sim::TacomaSimulator simulator;
@@ -85,6 +92,8 @@ TEST(TacomaSimulatorTest, KeepsValuesInRealisticRanges) {
     }
 }
 
+// The model should warm slowly enough that a cold start remains visibly cold
+// during the first 30 simulated seconds.
 TEST(TacomaSimulatorTest, CoolantIsStillColdAfterThirtySimulatedSeconds) {
     FrameCapture capture;
     tacoma::sim::TacomaSimulator simulator;
@@ -100,6 +109,8 @@ TEST(TacomaSimulatorTest, CoolantIsStillColdAfterThirtySimulatedSeconds) {
     EXPECT_LT(capture.frames.back().coolant_temp_c, 40.0);
 }
 
+// A long manual run should reach normal operating temperature without waiting
+// fifteen real-time minutes.
 TEST(TacomaSimulatorTest, ReachesOperatingTemperatureWithinFifteenMinutes) {
     FrameCapture capture;
     tacoma::sim::TacomaSimulator simulator;
@@ -115,6 +126,8 @@ TEST(TacomaSimulatorTest, ReachesOperatingTemperatureWithinFifteenMinutes) {
     EXPECT_GE(capture.frames.back().coolant_temp_c, 85.0);
 }
 
+// Once warm, coolant should remain inside the thermostat's requested operating
+// band rather than continuing to rise indefinitely.
 TEST(TacomaSimulatorTest, ThermostatHoldsCoolantAfterWarmup) {
     FrameCapture capture;
     tacoma::sim::TacomaSimulator simulator;
@@ -140,6 +153,8 @@ TEST(TacomaSimulatorTest, ThermostatHoldsCoolantAfterWarmup) {
     }
 }
 
+// This checks the observable signature of an upshift: RPM drops while road
+// speed continues to increase.
 TEST(TacomaSimulatorTest, GearShiftDropsRpmWhileSpeedContinuesToRise) {
     FrameCapture capture;
     tacoma::sim::TacomaSimulator simulator;

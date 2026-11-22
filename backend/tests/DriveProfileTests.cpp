@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+// This is a contract-level test: it verifies the two important phases of the
+// default scenario without coupling the test to simulator internals.
 TEST(NormalDriveProfileTest, RequestsAProgressiveDrive) {
     const tacoma::sim::NormalDriveProfile profile;
 
