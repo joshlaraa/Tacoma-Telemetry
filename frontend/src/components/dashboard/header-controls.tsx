@@ -108,7 +108,7 @@ export function HeaderControls({
   const resolvedDark = theme === "dark" || (theme === "system" && isDark)
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2">
+    <div className="flex w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end">
       <Badge variant={statusVariant(status)} className="gap-1.5">
         {status === "reconnecting" ? (
           <ArrowsClockwiseIcon className="size-3.5" />

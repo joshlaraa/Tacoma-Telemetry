@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react"
-import { RadialBar, RadialBarChart } from "recharts"
+import { Pie, PieChart } from "recharts"
 
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart"
 import {
@@ -59,8 +59,12 @@ export function GaugeCard({
     100,
     Math.max(0, ((value - minValue) / (maxValue - minValue)) * 100)
   )
-  const chartData = [
+  const trackData = [
+    { name: "track", value: 100, fill: "var(--gauge-track)" },
+  ]
+  const valueData = [
     { name: "value", value: percentage, fill: "var(--color-value)" },
+    { name: "remaining", value: 100 - percentage, fill: "transparent" },
   ]
 
   return (
@@ -71,31 +75,35 @@ export function GaugeCard({
       </CardHeader>
       <CardContent>
         <div
-          className="relative mx-auto aspect-square w-full max-w-56"
+          className="relative mx-auto aspect-square w-full max-w-40 sm:max-w-56"
           style={{ "--gauge-color": color } as CSSProperties}
         >
           <ChartContainer
             config={chartConfig}
-            className="h-full w-full [&_.recharts-radial-bar-background-sector]:fill-muted-foreground [&_.recharts-radial-bar-background-sector]:opacity-40"
+            className="h-full w-full"
           >
-            <RadialBarChart
-              data={chartData}
-              startAngle={225}
-              endAngle={-45}
-              innerRadius="72%"
-              outerRadius="100%"
-              barSize={14}
-            >
-              <RadialBar
+            <PieChart>
+              <Pie
+                data={trackData}
                 dataKey="value"
-                background={{
-                  fill: "var(--muted-foreground)",
-                  fillOpacity: 0.2,
-                }}
-                cornerRadius={8}
+                startAngle={225}
+                endAngle={-45}
+                innerRadius="72%"
+                outerRadius="100%"
+                stroke="none"
                 isAnimationActive={false}
               />
-            </RadialBarChart>
+              <Pie
+                data={valueData}
+                dataKey="value"
+                startAngle={225}
+                endAngle={-45}
+                innerRadius="72%"
+                outerRadius="100%"
+                stroke="none"
+                isAnimationActive={false}
+              />
+            </PieChart>
           </ChartContainer>
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
             <MetricReadout

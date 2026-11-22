@@ -14,6 +14,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import {
+  TELEMETRY_RANGE_MIN_FRAME,
+  TELEMETRY_RANGE_FRAME,
   toDisplayUnits,
   type DisplayUnitSystem,
   type TelemetryFrame,
@@ -36,10 +38,27 @@ const chartConfig = {
 } satisfies ChartConfig
 
 export function LiveChart({ history, units }: LiveChartProps) {
+  const displayMinimum = toDisplayUnits(TELEMETRY_RANGE_MIN_FRAME, units)
+  const displayRange = toDisplayUnits(TELEMETRY_RANGE_FRAME, units)
+  const latestTimestamp = history[history.length - 1]?.timestamp ?? 0
+  const speedTicks = Array.from({ length: 4 }, (_, index) => {
+    const fraction = index / 3
+    return (
+      displayMinimum.speed +
+      (displayRange.speed - displayMinimum.speed) * fraction
+    )
+  })
+  const coolantTicks = Array.from({ length: 4 }, (_, index) => {
+    const fraction = index / 3
+    return (
+      displayMinimum.coolantTemp +
+      (displayRange.coolantTemp - displayMinimum.coolantTemp) * fraction
+    )
+  })
   const data = history.map((frame) => {
     const displayFrame = toDisplayUnits(frame, units)
     return {
-      timestamp: displayFrame.timestamp,
+      secondsAgo: Math.max(-60, displayFrame.timestamp - latestTimestamp),
       speed: Number(displayFrame.speed.toFixed(1)),
       coolant: Number(displayFrame.coolantTemp.toFixed(1)),
     }
@@ -62,19 +81,28 @@ export function LiveChart({ history, units }: LiveChartProps) {
           >
             <CartesianGrid vertical={false} />
             <XAxis
-              dataKey="timestamp"
+              dataKey="secondsAgo"
+              type="number"
+              domain={[-60, 0]}
+              ticks={[-60, -50, -40, -30, -20, -10, 0]}
+              allowDataOverflow
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              minTickGap={32}
-              tickFormatter={(value: number) => `${Math.round(value)}s`}
+              tickFormatter={(value: number) =>
+                value === 0 ? "now" : `${value}s`
+              }
             />
             <YAxis
               yAxisId="speed"
+              domain={[displayMinimum.speed, displayRange.speed]}
+              ticks={speedTicks}
+              allowDataOverflow
               tickLine={false}
               axisLine={false}
               tickMargin={8}
               width={48}
+              tickFormatter={(value: number) => Math.round(value).toString()}
               label={{
                 value: `Speed (${units === "metric" ? "km/h" : "mph"})`,
                 angle: -90,
@@ -89,10 +117,14 @@ export function LiveChart({ history, units }: LiveChartProps) {
             <YAxis
               yAxisId="coolant"
               orientation="right"
+              domain={[displayMinimum.coolantTemp, displayRange.coolantTemp]}
+              ticks={coolantTicks}
+              allowDataOverflow
               tickLine={false}
               axisLine={false}
               tickMargin={8}
               width={48}
+              tickFormatter={(value: number) => Math.round(value).toString()}
               label={{
                 value: `Coolant (${units === "metric" ? "°C" : "°F"})`,
                 angle: 90,
@@ -108,7 +140,12 @@ export function LiveChart({ history, units }: LiveChartProps) {
               cursor={false}
               content={
                 <ChartTooltipContent
-                  labelFormatter={(value) => `${Number(value).toFixed(1)}s`}
+                  labelFormatter={(value) => {
+                    const secondsAgo = Number(value)
+                    return secondsAgo === 0
+                      ? "now"
+                      : `${secondsAgo.toFixed(1)}s ago`
+                  }}
                   formatter={(value, name) => (
                     <span className="flex min-w-28 justify-between gap-4">
                       <span>
@@ -117,7 +154,14 @@ export function LiveChart({ history, units }: LiveChartProps) {
                           : `Coolant (${units === "metric" ? "°C" : "°F"})`}
                       </span>
                       <span className="font-mono tabular-nums">
-                        {Number(value).toFixed(1)}
+                        {Number(value).toFixed(1)}{" "}
+                        {name === "speed"
+                          ? units === "metric"
+                            ? "km/h"
+                            : "mph"
+                          : units === "metric"
+                            ? "°C"
+                            : "°F"}
                       </span>
                     </span>
                   )}
@@ -150,11 +194,17 @@ export function LiveChart({ history, units }: LiveChartProps) {
         </ChartContainer>
         <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-2">
-            <span className="size-2 rounded-full bg-(--color-speed)" />
+            <span
+              className="size-2 rounded-full"
+              style={{ backgroundColor: "var(--color-speed)" }}
+            />
             Speed ({units === "metric" ? "km/h" : "mph"})
           </span>
           <span className="inline-flex items-center gap-2">
-            <span className="size-2 rounded-full bg-(--color-coolant)" />
+            <span
+              className="size-2 rounded-full"
+              style={{ backgroundColor: "var(--color-coolant)" }}
+            />
             Coolant ({units === "metric" ? "°C" : "°F"})
           </span>
         </div>

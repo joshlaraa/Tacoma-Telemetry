@@ -6,6 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import type { MockTelemetryMode } from "@/lib/telemetry-source"
 import {
+  TELEMETRY_RANGE_MIN_FRAME,
+  TELEMETRY_RANGE_FRAME,
+  TELEMETRY_RANGES,
   toDisplayUnits,
   type DisplayUnitSystem,
   type TelemetryFrame,
@@ -26,22 +29,8 @@ type TelemetryDashboardProps = {
   onMockModeChange: (mode: MockTelemetryMode) => void
 }
 
-const GAUGE_DOMAIN_FRAME: TelemetryFrame = {
-  timestamp: 0,
-  speedKmh: 180,
-  rpm: 0,
-  coolantTempC: 120,
-  throttlePct: 0,
-  engineLoadPct: 0,
-}
-
-const COOLANT_MINIMUM_FRAME: TelemetryFrame = {
-  ...GAUGE_DOMAIN_FRAME,
-  coolantTempC: 40,
-}
-
 const HOT_THRESHOLD_FRAME: TelemetryFrame = {
-  ...GAUGE_DOMAIN_FRAME,
+  ...TELEMETRY_RANGE_FRAME,
   coolantTempC: 102,
 }
 
@@ -55,8 +44,8 @@ export function TelemetryDashboard({
 }: TelemetryDashboardProps) {
   const [units, setUnits] = useState<DisplayUnitSystem>("metric")
   const displayFrame = metricFrame ? toDisplayUnits(metricFrame, units) : null
-  const displayGaugeDomain = toDisplayUnits(GAUGE_DOMAIN_FRAME, units)
-  const displayCoolantMinimum = toDisplayUnits(COOLANT_MINIMUM_FRAME, units)
+  const displayGaugeMinimum = toDisplayUnits(TELEMETRY_RANGE_MIN_FRAME, units)
+  const displayGaugeDomain = toDisplayUnits(TELEMETRY_RANGE_FRAME, units)
   const displayHotThreshold = toDisplayUnits(HOT_THRESHOLD_FRAME, units)
   const coolantZone = getCoolantZone(metricFrame?.coolantTempC ?? 0)
   const isHot = (metricFrame?.coolantTempC ?? 0) > 102
@@ -115,9 +104,9 @@ export function TelemetryDashboard({
               metricFrame ? Math.round(metricFrame.rpm).toString() : "—"
             }
             unit="rpm"
-            minValue={0}
-            maxValue={6000}
-            color="var(--chart-1)"
+            minValue={TELEMETRY_RANGES.rpm.min}
+            maxValue={TELEMETRY_RANGES.rpm.max}
+            color="var(--chart-3)"
           />
           <GaugeCard
             title="Road speed"
@@ -125,9 +114,9 @@ export function TelemetryDashboard({
             value={displayFrame?.speed ?? 0}
             displayValue={displayFrame ? displayFrame.speed.toFixed(1) : "—"}
             unit={displayFrame?.speedUnit ?? "km/h"}
-            minValue={0}
+            minValue={displayGaugeMinimum.speed}
             maxValue={displayGaugeDomain.speed}
-            color="var(--chart-2)"
+            color="var(--chart-1)"
           />
           <GaugeCard
             title="Coolant temperature"
@@ -137,14 +126,14 @@ export function TelemetryDashboard({
               displayFrame ? displayFrame.coolantTemp.toFixed(1) : "—"
             }
             unit={displayFrame?.coolantUnit ?? "°C"}
-            minValue={displayCoolantMinimum.coolantTemp}
+            minValue={displayGaugeMinimum.coolantTemp}
             maxValue={displayGaugeDomain.coolantTemp}
             color={
               coolantZone === "Hot"
                 ? "var(--destructive)"
                 : coolantZone === "Warm"
-                  ? "var(--chart-2)"
-                  : "var(--chart-1)"
+                  ? "var(--warning)"
+                  : "var(--chart-2)"
             }
             zone={coolantZone}
           />

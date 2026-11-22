@@ -7,6 +7,30 @@ export type TelemetryFrame = Readonly<{
   engineLoadPct: number
 }>
 
+export const TELEMETRY_RANGES = {
+  rpm: { min: 0, max: 6000 },
+  speedKmh: { min: 0, max: 180 },
+  coolantTempC: { min: 0, max: 120 },
+} as const
+
+export const TELEMETRY_RANGE_MIN_FRAME: TelemetryFrame = {
+  timestamp: 0,
+  speedKmh: TELEMETRY_RANGES.speedKmh.min,
+  rpm: TELEMETRY_RANGES.rpm.min,
+  coolantTempC: TELEMETRY_RANGES.coolantTempC.min,
+  throttlePct: 0,
+  engineLoadPct: 0,
+}
+
+export const TELEMETRY_RANGE_FRAME: TelemetryFrame = {
+  timestamp: 0,
+  speedKmh: TELEMETRY_RANGES.speedKmh.max,
+  rpm: TELEMETRY_RANGES.rpm.max,
+  coolantTempC: TELEMETRY_RANGES.coolantTempC.max,
+  throttlePct: 0,
+  engineLoadPct: 0,
+}
+
 export type TelemetryListener = (frame: TelemetryFrame) => void
 
 export type TelemetrySourceStatus = "mock" | "connected" | "reconnecting"
