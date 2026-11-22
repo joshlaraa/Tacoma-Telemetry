@@ -84,3 +84,83 @@ TEST(TacomaSimulatorTest, KeepsValuesInRealisticRanges) {
         EXPECT_LE(frame.engine_load_pct, 100.0);
     }
 }
+
+TEST(TacomaSimulatorTest, CoolantIsStillColdAfterThirtySimulatedSeconds) {
+    FrameCapture capture;
+    tacoma::sim::TacomaSimulator simulator;
+    simulator.set_callback([&capture](const tacoma::core::TelemetryFrame& frame) {
+        std::lock_guard lock(capture.mutex);
+        capture.frames.push_back(frame);
+    });
+
+    simulator.advance_simulated_time(30.0);
+
+    std::lock_guard lock(capture.mutex);
+    ASSERT_FALSE(capture.frames.empty());
+    EXPECT_LT(capture.frames.back().coolant_temp_c, 40.0);
+}
+
+TEST(TacomaSimulatorTest, ReachesOperatingTemperatureWithinFifteenMinutes) {
+    FrameCapture capture;
+    tacoma::sim::TacomaSimulator simulator;
+    simulator.set_callback([&capture](const tacoma::core::TelemetryFrame& frame) {
+        std::lock_guard lock(capture.mutex);
+        capture.frames.push_back(frame);
+    });
+
+    simulator.advance_simulated_time(900.0);
+
+    std::lock_guard lock(capture.mutex);
+    ASSERT_FALSE(capture.frames.empty());
+    EXPECT_GE(capture.frames.back().coolant_temp_c, 85.0);
+}
+
+TEST(TacomaSimulatorTest, ThermostatHoldsCoolantAfterWarmup) {
+    FrameCapture capture;
+    tacoma::sim::TacomaSimulator simulator;
+    simulator.set_callback([&capture](const tacoma::core::TelemetryFrame& frame) {
+        std::lock_guard lock(capture.mutex);
+        capture.frames.push_back(frame);
+    });
+
+    simulator.advance_simulated_time(900.0);
+    std::size_t warm_frame_count;
+    {
+        std::lock_guard lock(capture.mutex);
+        warm_frame_count = capture.frames.size();
+    }
+    simulator.advance_simulated_time(120.0);
+
+    std::lock_guard lock(capture.mutex);
+    ASSERT_GT(capture.frames.size(), warm_frame_count);
+    for (std::size_t index = warm_frame_count; index < capture.frames.size();
+         ++index) {
+        EXPECT_GE(capture.frames[index].coolant_temp_c, 88.0);
+        EXPECT_LE(capture.frames[index].coolant_temp_c, 92.0);
+    }
+}
+
+TEST(TacomaSimulatorTest, GearShiftDropsRpmWhileSpeedContinuesToRise) {
+    FrameCapture capture;
+    tacoma::sim::TacomaSimulator simulator;
+    simulator.set_callback([&capture](const tacoma::core::TelemetryFrame& frame) {
+        std::lock_guard lock(capture.mutex);
+        capture.frames.push_back(frame);
+    });
+
+    simulator.advance_simulated_time(8.0);
+
+    std::lock_guard lock(capture.mutex);
+    ASSERT_GT(capture.frames.size(), 1U);
+    bool found_gear_shift = false;
+    for (std::size_t index = 1; index < capture.frames.size(); ++index) {
+        const auto& previous = capture.frames[index - 1];
+        const auto& current = capture.frames[index];
+        if (current.speed_kmh > previous.speed_kmh &&
+            previous.rpm - current.rpm >= 500.0) {
+            found_gear_shift = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(found_gear_shift);
+}
