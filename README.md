@@ -68,4 +68,4 @@ tacoma-telemetry/
 
 ## Status
 
-Not started. Phase 1 is next.
+Phase 1 in progress...
