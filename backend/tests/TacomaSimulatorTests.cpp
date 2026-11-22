@@ -109,6 +109,24 @@ TEST(TacomaSimulatorTest, CoolantIsStillColdAfterThirtySimulatedSeconds) {
     EXPECT_LT(capture.frames.back().coolant_temp_c, 40.0);
 }
 
+// The warm-up curve should be plausibly midway to operating temperature, not
+// merely satisfy the cold-start and long-run endpoint checks.
+TEST(TacomaSimulatorTest, CoolantIsMidCurveAfterThreeSimulatedMinutes) {
+    FrameCapture capture;
+    tacoma::sim::TacomaSimulator simulator;
+    simulator.set_callback([&capture](const tacoma::core::TelemetryFrame& frame) {
+        std::lock_guard lock(capture.mutex);
+        capture.frames.push_back(frame);
+    });
+
+    simulator.advance_simulated_time(180.0);
+
+    std::lock_guard lock(capture.mutex);
+    ASSERT_FALSE(capture.frames.empty());
+    EXPECT_GE(capture.frames.back().coolant_temp_c, 55.0);
+    EXPECT_LE(capture.frames.back().coolant_temp_c, 75.0);
+}
+
 // A long manual run should reach normal operating temperature without waiting
 // fifteen real-time minutes.
 TEST(TacomaSimulatorTest, ReachesOperatingTemperatureWithinFifteenMinutes) {

@@ -18,7 +18,7 @@ constexpr double kSimulationStepSeconds = 0.1;
 
 // A first-order warm-up model approaches the thermostat target gradually:
 // after one time constant, roughly 63% of the remaining error is gone.
-constexpr double kCoolantTimeConstantSeconds = 210.0;
+constexpr double kCoolantTimeConstantSeconds = 180.0;
 constexpr double kIdleRpm = 700.0;
 constexpr double kRedlineRpm = 5800.0;
 constexpr double kMaxSpeedKmh = 160.0;
