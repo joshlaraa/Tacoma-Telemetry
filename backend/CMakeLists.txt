@@ -7,6 +7,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+option(TACOMA_TSAN "Build backend targets with ThreadSanitizer" OFF)
+if(TACOMA_TSAN)
+    add_compile_options(-fsanitize=thread)
+    add_link_options(-fsanitize=thread)
+endif()
+
 # GoogleTest is fetched at configure time so a clean checkout can build tests
 # without requiring a pre-installed copy.
 include(FetchContent)
@@ -25,6 +31,7 @@ find_package(Threads REQUIRED)
 # Core simulator library. Headers are exposed publicly because consumers include
 # the ITelemetrySource, frame, and simulator interfaces.
 add_library(tacoma_backend
+    src/core/TelemetryQueue.cpp
     src/sim/DriveProfile.cpp
     src/sim/TacomaSimulator.cpp
 )
@@ -46,6 +53,7 @@ enable_testing()
 add_executable(tacoma_tests
     tests/DriveProfileTests.cpp
     tests/TelemetryFrameTests.cpp
+    tests/TelemetryQueueTests.cpp
     tests/TacomaSimulatorTests.cpp
 )
 target_link_libraries(tacoma_tests PRIVATE tacoma_backend GTest::gtest_main)

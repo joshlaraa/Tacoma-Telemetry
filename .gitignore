@@ -1,5 +1,6 @@
 .DS_Store
 build/
+build-tsan/
 backend/build/
 frontend/node_modules/
 frontend/dist/
